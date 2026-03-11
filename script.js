@@ -250,8 +250,21 @@ function exportCanvasFile() {
 <body>
   <div id="canvasWrapper">
     ${liveCanvas.outerHTML}
-    ${liveSvg.outerHTML}
   </div>
+<script>
+let panX = 0, panY = 0, isPanning = false, startX = 0, startY = 0;
+const wrapper = document.getElementById('canvasWrapper');
+const canvas = document.getElementById('canvas');
+canvas.style.transform = 'translate(0px, 0px) scale(1)';
+wrapper.oncontextmenu = e => e.preventDefault();
+wrapper.onmousedown = e => {
+  if (e.button === 2) { isPanning = true; startX = e.pageX - panX; startY = e.pageY - panY; }
+};
+wrapper.onmousemove = e => {
+  if (isPanning) { panX = e.pageX - startX; panY = e.pageY - startY; canvas.style.transform = \`translate(\${panX}px, \${panY}px) scale(1)\`; }
+};
+wrapper.onmouseup = () => { isPanning = false; };
+</script>
 </body></html>`;
 
   const blob = new Blob([exportHTML], { type: "text/html" });
