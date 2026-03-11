@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Brian</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="toolbar">
+        <button onclick="addNode()">Add Node</button>
+        <button onclick="addTextBlock()">Add Text Block</button>
+        <button onclick="deleteSelected()">Delete Selected</button>
+        <button onclick="saveProjectFile()">Save Project</button>
+        <button onclick="exportCanvasFile()">Export HTML</button>
+        <button onclick="zoomIn()">Zoom In</button>
+        <button onclick="zoomOut()">Zoom Out</button>
+        <input type="file" id="fileInput" onchange="loadGraph(event)">
+        <span id="connectIndicator" style="margin-left:auto; color:red; font-weight:bold; cursor:pointer; display:none;">
+            ! Connect Mode
+        </span>
+    </div>
+
+  <div id="canvasWrapper">
+    <div id="canvas">
+      <svg id="connections"></svg>
+    </div>
+    <div id="contextMenu">
+      <button onclick="startConnect()">Connect</button>
+      <button onclick="startDisconnect()">Disconnect</button>
+      <label>Background: <input type="color" id="colorPicker" onchange="changeBgColor(this.value)"></label>
+      <label>Text: <input type="color" id="textColorPicker" onchange="changeTextColor(this.value)"></label>
+      <button onclick="toggleShape()">Toggle Shape</button>
+    </div>
+  </div>
+
+  <script src="script.js" defer></script>
+</body>
+</html>

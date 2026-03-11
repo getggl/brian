@@ -1,0 +1,115 @@
+body {
+  margin: 0;
+  font-family: sans-serif;
+  background: #111;
+  color: #fff;
+  overflow: hidden;
+}
+
+#toolbar {
+  padding: 10px;
+  background: #222;
+  display: flex;
+  gap: 10px;
+}
+
+#canvasWrapper {
+  position: relative;
+  width: 100vw;
+  height: 90vh;
+  overflow: hidden;
+}
+
+#canvas {
+  position: relative;
+  width: 100vw;
+  height: 90vh;
+  background: #111;
+  transform-origin: 0 0;
+}
+
+#connections {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 500;
+  pointer-events: none;
+}
+
+.node, .textblock {
+  position: absolute;
+  z-index: 1000;
+  border: 2px solid transparent;
+  cursor: grab;
+  resize: none;
+  overflow: auto;
+}
+
+.node {
+  padding: 10px;
+  background: #fffa65;
+  border-radius: 0;
+  color: #000;
+  box-shadow: 0 0 10px rgba(255,255,0,0.5);
+}
+
+.node.selected {
+  border: 2px solid #00f;
+  box-shadow: 0 0 12px rgba(0,0,255,0.7);
+  resize: both;
+}
+
+.textblock {
+  padding: 5px;
+  background: transparent;
+  color: #fff;
+}
+
+.textblock.selected {
+  border: 2px solid #00f;
+  box-shadow: 0 0 12px rgba(0,0,255,0.7);
+  resize: both;
+}
+
+.node[contenteditable], .textblock[contenteditable] {
+  outline: none;
+}
+
+svg line {
+  stroke: #0ff;
+  stroke-width: 2;
+}
+
+#contextMenu {
+  position: absolute;
+  background: #333;
+  color: #fff;
+  border: 1px solid #555;
+  display: none;
+  flex-direction: column;
+  z-index: 1000;
+  padding: 5px;
+}
+
+#contextMenu button {
+  background: none;
+  border: none;
+  color: #fff;
+  padding: 5px 10px;
+  text-align: left;
+  cursor: pointer;
+}
+
+#contextMenu button:hover {
+  background: #555;
+}
+
+#contextMenu label {
+  font-size: 12px;
+  margin: 2px 0;
+}
+
+#colorPicker, #textColorPicker {
+  width: 100%;
+  margin: 2px 0;
+}
