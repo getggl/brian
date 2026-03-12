@@ -155,6 +155,7 @@ function deleteSelected() {
 function saveProjectFile() {
   const liveCanvas = document.getElementById("canvas").cloneNode(true);
   liveCanvas.querySelectorAll(".selected").forEach(el => el.classList.remove("selected"));
+  liveCanvas.removeChild(liveCanvas.querySelector('#connections'));
   const liveSvg = document.getElementById("connections");
 
   const projectHTML = `
@@ -173,12 +174,8 @@ function saveProjectFile() {
 </body>
 </html>`;
   const blob = new Blob([projectHTML], { type: "text/html" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "graph-project.html";
-  a.click();
-  URL.revokeObjectURL(url);
+  const name = promptFilename("graph-project.html");
+  downloadBlob(blob, name);
 }
 
 // --- Load Project ---
@@ -191,17 +188,38 @@ function loadGraph(event) {
     const text = e.target.result;
     const doc = new DOMParser().parseFromString(text, "text/html");
 
-    // restore canvas nodes
     const savedCanvas = doc.getElementById("canvas");
-    canvas.innerHTML = savedCanvas.innerHTML;
+    if (!savedCanvas) return;
 
-    // restore svg lines
-    const savedSvg = doc.getElementById("connections");
+    // clear existing nodes/textblocks but keep the live SVG in place
+    Array.from(canvas.getElementsByClassName("node")).forEach(n => canvas.removeChild(n));
+    Array.from(canvas.getElementsByClassName("textblock")).forEach(tb => canvas.removeChild(tb));
+
+    // copy over all children from savedCanvas except any SVG
+    Array.from(savedCanvas.children).forEach(child => {
+      if (child.id !== 'connections') {
+        canvas.appendChild(child.cloneNode(true));
+      }
+    });
+
+    // determine which SVG in the saved document holds the lines
+    let savedSvg = doc.querySelectorAll('#connections');
+    if (savedSvg.length > 1) {
+      // prefer the one outside the canvas (last in document order)
+      savedSvg = savedSvg[savedSvg.length - 1];
+    } else {
+      savedSvg = savedSvg[0];
+    }
+
     const liveSvg = document.getElementById("connections");
-    while (liveSvg.firstChild) liveSvg.removeChild(liveSvg.firstChild);
-    [...savedSvg.children].forEach(child => liveSvg.appendChild(child));
+    if (liveSvg) {
+      while (liveSvg.firstChild) liveSvg.removeChild(liveSvg.firstChild);
+      if (savedSvg) {
+        [...savedSvg.children].forEach(child => liveSvg.appendChild(child.cloneNode(true)));
+      }
+    }
 
-    // rebuild arrays
+    // rebuild arrays and event bindings
     nodes = Array.from(canvas.getElementsByClassName("node"));
     textblocks = Array.from(canvas.getElementsByClassName("textblock"));
     connections = [];
@@ -209,16 +227,17 @@ function loadGraph(event) {
     nodes.forEach(bindNodeEvents);
     textblocks.forEach(bindTextBlockEvents);
 
-    // rebuild connections
-    liveSvg.querySelectorAll("line").forEach(line => {
-      const aId = line.dataset.a;
-      const bId = line.dataset.b;
-      const aNode = canvas.querySelector(`.node[data-id="${aId}"]`);
-      const bNode = canvas.querySelector(`.node[data-id="${bId}"]`);
-      if (aNode && bNode) {
-        connections.push({ line, a: aNode, b: bNode });
-      }
-    });
+    if (liveSvg) {
+      liveSvg.querySelectorAll("line").forEach(line => {
+        const aId = line.dataset.a;
+        const bId = line.dataset.b;
+        const aNode = canvas.querySelector(`.node[data-id="${aId}"]`);
+        const bNode = canvas.querySelector(`.node[data-id="${bId}"]`);
+        if (aNode && bNode) {
+          connections.push({ line, a: aNode, b: bNode });
+        }
+      });
+    }
 
     updateConnections();
   };
@@ -268,12 +287,8 @@ wrapper.onmouseup = () => { isPanning = false; };
 </body></html>`;
 
   const blob = new Blob([exportHTML], { type: "text/html" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "graph-export.html";
-  a.click();
-  URL.revokeObjectURL(url);
+  const name = promptFilename("graph-export.html");
+  downloadBlob(blob, name);
 }
 
 // --- Utility ---
@@ -281,6 +296,73 @@ function deselectAll() {
   nodes.forEach(n => n.classList.remove('selected'));
   textblocks.forEach(t => t.classList.remove('selected'));
   selected = null;
+}
+
+/**
+ * Convert an rgb(...) string or hex value to normalized hex.
+ * @param {string} rgb
+ * @returns {string}
+ */
+function rgbToHex(rgb) {
+  if (!rgb) return '#000000';
+  if (rgb.startsWith('#')) return rgb;
+  const m = rgb.match(/\d+/g);
+  if (!m) return '#000000';
+  return "#" + m.slice(0,3).map(n => {
+    const hex = parseInt(n).toString(16);
+    return hex.length === 1 ? "0" + hex : hex;
+  }).join('');
+}
+
+/**
+ * Prompt the user for a filename, falling back to a default.
+ * Removes path components to avoid unexpected directory hints.
+ * @param {string} defaultName
+ * @returns {string}
+ */
+function promptFilename(defaultName) {
+  const name = prompt('Enter filename:', defaultName);
+  if (!name) return defaultName;
+  // strip any path separators
+  return name.replace(/[\\\/]/g, '_');
+}
+
+/**
+ * Cross-browser download helper: asks the user where to save when possible.
+ * Falls back to a normal anchor-based download.
+ * @param {Blob} blob
+ * @param {string} suggestedName
+ */
+async function downloadBlob(blob, suggestedName) {
+  // ensure we use the final filename if user changed it via promptFilename
+  if (!suggestedName) suggestedName = 'download.html';
+  if ('showSaveFilePicker' in window) {
+    try {
+      const handle = await window.showSaveFilePicker({
+        suggestedName,
+        types: [{ description: 'HTML File', accept: { 'text/html': ['.html'] } }],
+      });
+      const writable = await handle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+      return;
+    } catch (err) {
+      // user canceled or API error, we'll fall back to the anchor below
+      console.warn('File System Access API save failed or was canceled', err);
+    }
+  } else {
+    // showSaveFilePicker is only available in secure contexts (https/localhost)
+    console.warn('showSaveFilePicker not supported in this environment; using default download location.');
+    alert('Your browser or environment does not support choosing a save location.\n' +
+          'Try serving the page over HTTPS or use a Chromium-based browser with File System Access API enabled.');
+  }
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = suggestedName;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 // --- Context Menu Helpers ---
 function showMenu(x, y) {
@@ -349,23 +431,6 @@ wrapper.onmousemove = e => {
 };
 wrapper.onmouseup = () => { isPanning = false; };
 
-// --- Utility ---
-function deselectAll() {
-  nodes.forEach(n => n.classList.remove('selected'));
-  textblocks.forEach(t => t.classList.remove('selected'));
-  selected = null;
-}
-
-function rgbToHex(rgb) {
-  if (!rgb) return '#000000';
-  if (rgb.startsWith('#')) return rgb;
-  const m = rgb.match(/\d+/g);
-  if (!m) return '#000000';
-  return "#" + m.slice(0,3).map(n => {
-    const hex = parseInt(n).toString(16);
-    return hex.length === 1 ? "0" + hex : hex;
-  }).join('');
-}
 
 // --- Hide Menu & Deselect on Canvas Click ---
 canvas.onclick = () => { hideMenu(); deselectAll(); };
